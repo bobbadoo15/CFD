@@ -1,1 +1,9 @@
-
+"""
+This simulation displays the velocity profile and the static pressure in pipe flow where the pipe has two parallel plates that are static. 
+Two grid resolutions are used for comparison and 3 cases are used for each resolution (6 simulation). The two grid resolutions are: 10x10 
+grid and 50x50 grid. The 3 cases for each resolution are: 1) fixed inlet velocity with two different viscosities and 2) fixed viscosity 
+with two velocities. Essentially, when a viscosity is used, two iterations of velocities are used, and then the viscosity will change to 
+use two other velocities. This simulation uses the second-order upwind scheme with the velocity residuals being 10^-5 and the continuity
+residual being 10^-4 for the 10x10 grid resolution and 10^-3 for the 50x50 grid resolution. One turbulent flow case is used using the
+standard two-equation k-epsilon turbulence model for inlet velocity 1 m/s and viscosity 4e-5 kg/ms with 50x50 grid resolution.
+"""
