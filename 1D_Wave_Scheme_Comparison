@@ -1,0 +1,261 @@
+'''
+   This program solve the following 1D wave equation: dphi/dt + u * dphi/dx = 0, where u = 1.0
+   The three explicit schemes used to solve for this wave is the First-order upwind, Second-order CD,
+   and the Beam-Warming second-order upwind scheme. The analytical solution for this equation 
+   is a right moving wave with a constant speed of u. The computational domain is [0, 10], with 
+   a periodic boundary condition. The gamma-value is the Courant number, which is defined as: gamma = u * dt / dx, 
+   where u is the wave speed, dt is the time step, and dx is the spatial step. The total time for the 
+   simulation is between 0 and 20 seconds, having plots displaying when t = 1, 5, and 20; 
+   these values define the time resolution of the simulation. The spatial resolution is defined by the 
+   number of interval with 40, 80, and 160 with x from 0 to 10. The courant number is defined as 0.25.
+
+'''
+
+import numpy as np
+import matplotlib.pyplot as plt
+from pprint import pprint
+
+def main():
+    " This is the main function that will call the other functions to perform the simulation and plotting. "
+
+    # Define parameters
+    u = 1.0                            # wave speed
+    gamma = 0.25                       # Courant number
+    spatial_intervals = [40, 80, 160]  # number of intervals
+    x_interval = [0, 10]               # spatial domain
+    times = [1, 5, 20]                  # time for plotting
+    t_interval = [0, 20]               # time domain
+
+    # Dictionary to store all results by spatial interval
+    all_results = {}
+
+    # Run first-order upwind for each spatial interval
+    for spatial_interval in spatial_intervals:
+        dt, x = courant_number(u, gamma, spatial_interval, x_interval)
+        upwind_results = first_order_upwind(u, gamma, times, t_interval, dt, x)
+        cd_results = second_order_cd(u, gamma, times, t_interval, dt, x)
+        beam_results = beam_warming(u, gamma, times, t_interval, dt, x)
+
+        # Store results in a structure that is easy to expand later
+        all_results[spatial_interval] = {
+            "x": x,
+            "upwind": upwind_results,
+            "cd": cd_results,
+            "beam": beam_results
+        }
+
+    # Plot results
+    plot_results(all_results, times, x_interval)
+
+def courant_number(u, gamma, spatial_interval, x_interval):
+    """ This function will calculate the time step based on the Courant number. """
+
+    # Calculate spatial step
+    dx = (x_interval[1] - x_interval[0]) / spatial_interval
+
+    # Calculate time step using the Courant number
+    dt = gamma * dx / u
+
+    # Define x-grid for a periodic domain (do not duplicate the endpoint)
+    x = np.linspace(x_interval[0], x_interval[1], spatial_interval, endpoint=False)
+
+    return dt, x
+
+def first_order_upwind(u, gamma, times, t_interval, dt, x):
+    """Solve the 1D wave equation using the first-order upwind scheme."""
+
+    # Initial condition
+    phi = np.zeros(len(x))
+    for j in range(len(x)):
+        if 0.0 <= x[j] <= 2.0 * np.pi:
+            phi[j] = 1.0 - np.cos(x[j])
+        else:
+            phi[j] = 0.0
+
+    # Dictionary to store requested snapshots
+    saved_solutions = {}
+
+    # Save initial condition if requested
+    if 0 in times:
+        saved_solutions[0] = phi.copy()
+
+    # Initialize time
+    t_current = t_interval[0]
+
+    # March in time
+    while t_current <= t_interval[1]:
+
+        # Save solutions near requested times
+        for time in times:
+            if time not in saved_solutions and abs(t_current - time) <= dt / 2:
+                saved_solutions[time] = phi.copy()
+
+        # Apply periodic boundary condition
+        phi_bc = periodic_boundary_condition(phi)
+
+        # Create updated solution array
+        phi_new = np.zeros(len(phi))
+
+        # First-order upwind update
+        for j in range(len(phi)):
+            phi_new[j] = phi_bc[j + 2] - gamma * (phi_bc[j + 2] - phi_bc[j + 1])
+
+        # Update phi and time
+        phi = phi_new
+        t_current += dt
+
+    return saved_solutions
+
+def second_order_cd(u, gamma, times, t_interval, dt, x):
+    """ This function will solve the 1D wave equation using the second-order central difference scheme. """
+
+    # Initial condition
+    phi = np.zeros(len(x))
+    for j in range(len(x)):
+        if 0.0 <= x[j] <= 2.0 * np.pi:
+            phi[j] = 1.0 - np.cos(x[j])
+        else:
+            phi[j] = 0.0
+
+    # Dictionary to store requested snapshots
+    saved_solutions = {}
+
+    # Save initial condition if requested
+    if 0 in times:
+        saved_solutions[0] = phi.copy()
+
+    # Initialize time
+    t_current = t_interval[0]
+
+    # March in time
+    while t_current <= t_interval[1]:
+
+        # Save solutions near requested times
+        for time in times:
+            if time not in saved_solutions and abs(t_current - time) <= dt / 2:
+                saved_solutions[time] = phi.copy()
+
+        # Apply periodic boundary condition
+        phi_bc = periodic_boundary_condition(phi)
+
+        # Create updated solution array
+        phi_new = np.zeros(len(phi))
+
+        # Second-order central difference update
+        for j in range(len(phi)):
+            phi_new[j] = phi_bc[j + 2] - (gamma/2) * (phi_bc[j + 3] - phi_bc[j + 1])
+
+        # Update phi and time
+        phi = phi_new
+        t_current += dt
+
+    return saved_solutions
+
+def beam_warming(u, gamma, times, t_interval, dt, x):
+    """  This function will solve the 1D wave equation using the Beam-Warming second-order upwind scheme. """
+
+    # Initial condition
+    phi = np.zeros(len(x))
+    for j in range(len(x)):
+        if 0.0 <= x[j] <= 2.0 * np.pi:
+            phi[j] = 1.0 - np.cos(x[j])
+        else:
+            phi[j] = 0.0
+
+    # Dictionary to store requested snapshots
+    saved_solutions = {}
+
+    # Save initial condition if requested
+    if 0 in times:
+        saved_solutions[0] = phi.copy()
+
+    # Initialize time
+    t_current = t_interval[0]
+
+    # March in time
+    while t_current <= t_interval[1]:
+
+        # Save solutions near requested times
+        for time in times:
+            if time not in saved_solutions and abs(t_current - time) <= dt / 2:
+                saved_solutions[time] = phi.copy()
+
+        # Apply periodic boundary condition
+        phi_bc = periodic_boundary_condition(phi)
+
+        # Create updated solution array
+        phi_new = np.zeros(len(phi))
+
+        # Second-order central difference update
+        for j in range(len(phi)):
+            phi_new[j] = phi_bc[j + 2] - (gamma/2) * (3 * phi_bc[j + 2] - 4 * phi_bc[j + 1] + phi_bc[j]) + (gamma**2 / 2) * (phi_bc[j + 2] - 2 * phi_bc[j + 1] + phi_bc[j])
+
+        # Update phi and time
+        phi = phi_new
+        t_current += dt
+
+    return saved_solutions
+
+def plot_results(all_results, times, x_interval):
+    """ Plot one figure for each spatial interval and save time. Each figure is structured so all schemes can be compared later."""
+
+    for spatial_interval, results in all_results.items():
+        x = results["x"]
+
+        for time in times:
+            
+            # Create a new figure for each spatial interval and time combination
+            plt.figure(figsize=(8, 5))
+
+            # Plot-ready x values include the endpoint for display
+            x_plot = np.append(x, x_interval[1])
+
+            # First-order upwind
+            if time in results["upwind"]:
+                phi_upwind = results["upwind"][time]
+                phi_upwind_plot = np.append(phi_upwind, phi_upwind[0])
+                plt.plot(x_plot, phi_upwind_plot, label="First-Order Upwind")
+
+            # Second-order central difference
+            if time in results["cd"]:
+                phi_cd = results["cd"][time]
+                phi_cd_plot = np.append(phi_cd, phi_cd[0])
+                plt.plot(x_plot, phi_cd_plot, label="Second-Order Central Difference")
+
+            # Beam-Warming second-order upwind
+            if time in results["beam"]:
+                phi_beam = results["beam"][time]
+                phi_beam_plot = np.append(phi_beam, phi_beam[0])
+                plt.plot(x_plot, phi_beam_plot, label="Beam-Warming")
+
+            plt.xlabel("Spatial Domain (x)")
+            plt.ylabel("Phi")
+            plt.title(f"Spatial Interval = {spatial_interval}, Time = {time}")
+            plt.legend()
+            plt.grid(True)
+            plt.tight_layout()
+            plt.show()
+
+def periodic_boundary_condition(phi):
+    """
+    This function will apply the periodic boundary condition to the solution array phi.
+
+    Return a periodic extension of phi with:
+    - 2 ghost cells on the left
+    - 1 ghost cell on the right
+
+    """
+    phi_bc = np.zeros(len(phi) + 3)
+
+    # Interior cells
+    phi_bc[2:-1] = phi
+
+    # Periodic/outer ghost cells - equating the ghost cells to the appropriate interior cells for continuity
+    phi_bc[0] = phi[-2]
+    phi_bc[1] = phi[-1]
+    phi_bc[-1] = phi[0]
+
+    return phi_bc
+
+if __name__ == "__main__":
+    main()
